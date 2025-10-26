@@ -11,7 +11,7 @@ import (
 var (
 	exePath = "./Boltbase"
 	dbPath  = "./Boltbase.db"
-	uv      = "uv run main.py"
+	uv      = "uv run Boltbase_test.py"
 )
 
 var (
