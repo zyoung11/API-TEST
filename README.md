@@ -1,144 +1,109 @@
-# API-TEST
+# APITEST - 一个轻量级的API测试库
 
-A mini Python library for API testing.
+`APITEST` 是一个用于简化API接口测试的Python迷你库。它基于 `requests` 和 `rich` 库，为您的API测试提供美观、易读的终端输出。
 
-## Description
+## ✨ 功能特性
 
-This library provides a simple way to test APIs with functions for `POST`, `GET`, `PUT`, and `DELETE` requests. It also has a `run_test` function to display the results in a formatted way using the `rich` library.
+- **HTTP方法支持**: 支持 `GET`, `POST`, `PUT`, `DELETE` 等常用的HTTP请求方法。
+- **美观的输出**: 使用 `rich` 库，将API响应以格式化的面板形式展示在终端，支持JSON高亮和自定义颜色主题。
+- **状态码高亮**: 根据HTTP状态码（2xx, 4xx, 5xx）自动着色，让成功和失败的请求一目了然。
+- **链式调用**: 通过 `extract` 参数，您可以从一个API响应中提取数据，并将其用于后续的API请求。
+- **失败断言**: `should_fail` 参数允许您定义预期失败的测试用例，当接口如预期般失败时，测试将被标记为成功。
+- **灵活的头部支持**: 支持添加自定义HTTP头部，包括通过 `key` 参数快速设置 `Authorization` Bearer Token。
+- **异常处理**: 内置了请求异常和JSON解析异常的处理逻辑，确保测试脚本的健壮性。
 
-## Features
+## 📦 安装依赖
 
-- Send `POST`, `GET`, `PUT`, and `DELETE` requests.
-- Display formatted test results in the console.
-- Extract data from the response body.
-- Check for expected failures.
-
-## Dependencies
-
-- `requests`
-- `rich`
-
-You can install them using pip:
+建议使用**uv**安装。
 
 ```bash
-pip install requests rich
+git clone https://github.com/zyoung11/API-TEST.git
+cd API-TEST
+uv sync
+
+#----------------------编写测试逻辑--------------------
+# touch TEST.py  # 建议新建一个Python文件
+# uv run TEST.py  # 运行测试脚本
 ```
 
-## Usage
+## 🚀 快速上手
 
-### `post(url: str, body: Optional[str] = None, key: Optional[str] = None, should_fail: bool = False) -> Tuple[str, Any, int]`
-
-Sends a POST request to the specified URL.
-
-- `url`: The URL to send the request to.
-- `body`: The request body.
-- `key`: The authorization key.
-- `should_fail`: If `True`, the test will pass if the request fails.
-
-### `get(url: str, key: Optional[str] = None, should_fail: bool = False) -> Tuple[str, Any, int]`
-
-Sends a GET request to the specified URL.
-
-- `url`: The URL to send the request to.
-- `key`: The authorization key.
-- `should_fail`: If `True`, the test will pass if the request fails.
-
-### `put(url: str, body: Optional[str] = None, key: Optional[str] = None, should_fail: bool = False) -> Tuple[str, Any, int]`
-
-Sends a PUT request to the specified URL.
-
-- `url`: The URL to send the request to.
-- `body`: The request body.
-- `key`: The authorization key.
-- `should_fail`: If `True`, the test will pass if the request fails.
-
-### `delete(url: str, key: Optional[str] = None, should_fail: bool = False) -> Tuple[str, Any, int]`
-
-Sends a DELETE request to the specified URL.
-
-- `url`: The URL to send the request to.
-- `key`: The authorization key.
-- `should_fail`: If `True`, the test will pass if the request fails.
-
-### `run_test(description: str, response: Tuple[str, Any, int], extract: Optional[str] = None) -> Any`
-
-Runs a test and displays the results.
-
-- `description`: The test description.
-- `response`: The response from the request function.
-- `extract`: The key to extract from the response body.
-
-## Example
+下面是一个简单的示例，展示了如何使用 `APITEST` 来测试API。
 
 ```python
-if __name__ == "__main__":
-    run_test("创建string类型的桶", post("http://localhost:5090/bucket/test-string/string"))
-    run_test("创建seq类型的桶", post("http://localhost:5090/bucket/test-seq/seq"))
-    run_test("创建time类型的桶", post("http://localhost:5090/bucket/test-time/time"))
-    run_test("创建test桶", post("http://localhost:5090/bucket/test/seq"))
+# TEST.py
+from APITEST import get, post, put, delete, run_test
 
-    run_test("查看所有的桶", get("http://localhost:5090/bucket"))
+# ---------- 1. 最基础的 GET：获取资源并提取字段 ----------
+uid = run_test(
+    "1. 取 1 号用户",
+    get("https://jsonplaceholder.typicode.com/users/1", extract="id")
+)
+# 提取到的 uid 会用于后续请求
 
-    run_test("修改桶名", put("http://localhost:5090/bucket/test/test-new"))
+# ---------- 2. 字符串拼接 URL：把上一步提取的值传进去 ----------
+run_test(
+    "2. 用提取的 id 查该用户详情",
+    get(f"https://jsonplaceholder.typicode.com/users/{uid}")
+)
 
-    run_test("再次查看所有的桶", get("http://localhost:5090/bucket"))
+# ---------- 3. POST：带 JSON 体提交，再提取返回字段 ----------
+new_post = run_test(
+    "3. 新建一篇帖子",
+    post(
+        "https://jsonplaceholder.typicode.com/posts",
+        body=f'{{"title":"foo","body":"bar","userId":{uid}}}',
+        extract="id"  # 把服务端返回的新帖子 id 拿出来
+    )
+)
 
-    run_test("获取桶的类型", get("http://localhost:5090/bucket/type"))
+# ---------- 4. PUT：修改刚创建的帖子 ----------
+run_test(
+    "4. 修改刚才的帖子",
+    put(
+        f"https://jsonplaceholder.typicode.com/posts/{new_post}",
+        body='{"id":%d,"title":"updated","body":"new body","userId":1}' % new_post
+    )
+)
 
-    run_test("删除桶", delete("http://localhost:5090/bucket/test-new"))
+# ---------- 5. DELETE：示范自定义请求头 ----------
+run_test(
+    "5. 带自定义头删除帖子",
+    delete(
+        f"https://jsonplaceholder.typicode.com/posts/{new_post}",
+        headers={"X-Custom": "demo"}  # 任意自定义头
+    )
+)
 
-    run_test("最后一次查看所有的桶", get("http://localhost:5090/bucket"))
-
-    run_test("向string类型的桶插入数据_1",
-             post("http://localhost:5090/kv",
-                  body='''{
-                             "Bucket": "test-string",
-                             "Key": "test-key",
-                             "Value": "test-value-1",
-                             "Update": true
-                           }'''))
-
-    run_test("读取test-string表的所以数据_1", get("http://localhost:5090/kv/all/test-string"))
-
-    run_test("向string类型的桶插入数据_2",
-             post("http://localhost:5090/kv",
-                  body='''{
-                             "Bucket": "test-string",
-                             "Key": "test-key",
-                             "Value": "test-value-2",
-                             "Update": true
-                           }'''))
-
-    run_test("读取test-string表的所以数据_2", get("http://localhost:5090/kv/all/test-string"))
-
-    run_test("向string类型的桶插入冲突数据_3",
-             post("http://localhost:5090/kv",
-                  should_fail=True,
-                  body='''{
-                             "Bucket": "test-string",
-                             "Key": "test-key",
-                             "Value": "test-value-3",
-                             "Update": false
-                           }'''))
-
-    run_test("读取test-string表的所以数据_3", get("http://localhost:5090/kv/all/test-string"))
-
-    run_test("向seq类型的桶插入数据",
-             post("http://localhost:5090/kv",
-                  body='''{
-                             "Bucket": "test-seq",
-                             "Value": "test-value"
-                           }'''))
-
-    run_test("读取test-seq表的所以数据", get("http://localhost:5090/kv/all/test-seq"))
-
-    run_test("向time类型的桶插入数据",
-             post("http://localhost:5090/kv",
-                  body='''{
-                             "Bucket": "test-time",
-                             "Value": "test-value"
-                           }'''))
-
-    total = run_test("读取test-time表的所以数据", get("http://localhost:5090/kv/all/test-time"), extract="total")
-    print(f"total={total}\n")
+# ---------- 6. 预期失败：当接口返回 404 时我们希望测试“通过” ----------
+run_test(
+    "6. 预期 404 的 GET",
+    get("https://jsonplaceholder.typicode.com/posts/999999", should_fail=True)
+)
 ```
+
+## 📖 API参考
+
+### `run_test(description, response)`
+
+执行一个测试并打印结果。
+
+- `description` (str): 对这个测试的描述，将作为标题显示在结果面板上。
+- `response` (Tuple): 由 `get`, `post`, `put`, `delete` 函数返回的元组。
+
+
+### `post(url, body, key, should_fail, extract, headers)`
+### `get(url, key, should_fail, extract, headers)`
+### `put(url, body, key, should_fail, extract, headers)`
+### `delete(url, key, should_fail, extract, headers)`
+
+这些函数用于发起HTTP请求，它们的参数相似：
+
+- `url` (str): 请求的URL。
+- `body` (Optional[str]): 请求体，通常是一个JSON字符串。仅 `post` 和 `put` 支持。
+- `key` (Optional[str]): 用于认证的Bearer Token。如果提供，会自动添加到请求头的 `Authorization` 字段。
+- `should_fail` (bool): 如果设置为 `True`，则预期此请求会失败（返回非2xx状态码）。如果请求真的失败了，测试结果为成功 (✅)，反之则为失败 (❌)。默认为 `False`。
+- `extract` (Optional[str]): 一个字符串键，用于从JSON响应中提取对应的值。如果提取成功，`run_test` 函数会返回这个值。
+- `headers` (Optional[Dict[str, str]]): 一个字典，包含了需要添加到请求中的自定义头部。
+
+
