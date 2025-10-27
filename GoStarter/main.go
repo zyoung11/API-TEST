@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	exePath = "./Boltbase"
-	dbPath  = "./Boltbase.db"
-	uv      = "uv run Boltbase_test.py"
+	exePath = "./xxx"         // 你的后端文件
+	dbPath  = "./xxx"         // 你测试完毕后可能需要删除的文件或文件夹
+	uv      = "uv run xxx.py" // 你的测试脚本
 )
 
 var (
