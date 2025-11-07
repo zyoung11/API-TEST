@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
-
+from rich import box
 
 def _get_status_color(status_code: int) -> str:
     if 200 <= status_code < 300:
@@ -15,6 +15,23 @@ def _get_status_color(status_code: int) -> str:
     if 500 <= status_code < 600:
         return "red"
     return "white"
+
+def print_info(title: str, info: Dict[str, Any]):
+    console = Console()
+
+    table = Table(
+        show_header=True,
+        header_style="magenta", 
+        box=box.ROUNDED,
+        expand=True
+    )
+    table.add_column("Key", style="dim", width=20)
+    table.add_column("Value")
+
+    for k, v in info.items():
+        table.add_row(str(k), str(v))
+
+    console.print(Panel(table, title=title, border_style="green", expand=True))
 
 def _deep_get(obj: Any, path: str) -> Any:
     keys = path.split(".")
@@ -176,23 +193,4 @@ def get(url: str, key: Optional[str] = None, should_fail: bool = False, extract:
     except Exception as e:
         return ("❌" if not should_fail else "✅"), str(e), 999, extract
 
-
-def print_info(title: str, info: Dict[str, Any]):
-    console = Console()
-    
-    table = Table(show_header=True, header_style="magenta", expand=True)
-    table.add_column("Key", style="dim", width=20)
-    table.add_column("Value")
-
-    for key, value in info.items():
-        table.add_row(str(key), str(value))
-
-    console.print(
-        Panel(
-            table,
-            title=title,
-            border_style="green",
-            expand=True
-        )
-    )
 
