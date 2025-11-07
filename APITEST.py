@@ -4,6 +4,7 @@ from typing import Optional, Any, Tuple, Dict
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
+from rich.table import Table
 
 
 def _get_status_color(status_code: int) -> str:
@@ -15,6 +16,19 @@ def _get_status_color(status_code: int) -> str:
         return "red"
     return "white"
 
+def _deep_get(obj: Any, path: str) -> Any:
+    keys = path.split(".")
+    cur = obj
+    for k in keys:
+        if isinstance(cur, dict):
+            cur = cur.get(k)
+        elif isinstance(cur, list) and k.isdigit():
+            cur = cur[int(k)]
+        else:
+            return None
+        if cur is None:
+            break
+    return cur
 
 def run_test(description: str, response: Tuple[str, Any, int, Optional[str]]) -> Any:
     console = Console()
@@ -44,11 +58,10 @@ def run_test(description: str, response: Tuple[str, Any, int, Optional[str]]) ->
     console.print()
 
     if extract:
-        if isinstance(content, dict) and extract in content:
-            return content[extract]
-        else:
-            console.print(f"[bold red]Warning:[/bold red] Could not extract '{extract}' from response.")
-            return None
+        value = _deep_get(content, extract)
+        if value is not None:
+            return value
+        console.print(f"[bold red]Warning:[/bold red] Could not extract '{extract}' from response.")
     return None
 
 
@@ -162,3 +175,24 @@ def get(url: str, key: Optional[str] = None, should_fail: bool = False, extract:
             return "✅", json_data, status_code, extract
     except Exception as e:
         return ("❌" if not should_fail else "✅"), str(e), 999, extract
+
+
+def print_info(title: str, info: Dict[str, Any]):
+    console = Console()
+    
+    table = Table(show_header=True, header_style="magenta", expand=True)
+    table.add_column("Key", style="dim", width=20)
+    table.add_column("Value")
+
+    for key, value in info.items():
+        table.add_row(str(key), str(value))
+
+    console.print(
+        Panel(
+            table,
+            title=title,
+            border_style="green",
+            expand=True
+        )
+    )
+

@@ -7,7 +7,7 @@
 - **HTTP方法支持**: 支持 `GET`, `POST`, `PUT`, `DELETE` 等常用的HTTP请求方法。
 - **美观的输出**: 使用 `rich` 库，将API响应以格式化的面板形式展示在终端，支持JSON高亮和自定义颜色主题。
 - **状态码高亮**: 根据HTTP状态码（2xx, 4xx, 5xx）自动着色，让成功和失败的请求一目了然。
-- **链式调用**: 通过 `extract` 参数，您可以从一个API响应中提取数据，并将其用于后续的API请求。
+- **链式调用**: 通过 `extract` 参数，您可以从一个API响应中提取数据，并将其用于后续的API请求。支持点语法提取深层嵌套的JSON字段，例如 `user.address.city`。
 - **失败断言**: `should_fail` 参数允许您定义预期失败的测试用例，当接口如预期般失败时，测试将被标记为成功。
 - **灵活的头部支持**: 支持添加自定义HTTP头部，包括通过 `key` 参数快速设置 `Authorization` Bearer Token。
 - **异常处理**: 内置了请求异常和JSON解析异常的处理逻辑，确保测试脚本的健壮性。
@@ -80,6 +80,12 @@ run_test(
     "6. 预期 404 的 GET",
     get("https://jsonplaceholder.typicode.com/posts/999999", should_fail=True)
 )
+
+# ---------- 7. 点语法提取：提取 user 的 address.city ----------
+city = run_test(
+    "7. 提取用户的城市",
+    get("https://jsonplaceholder.typicode.com/users/1", extract="address.city")
+)
 ```
 
 ## 📖 API参考
@@ -103,7 +109,7 @@ run_test(
 - `body` (Optional[str]): 请求体，通常是一个JSON字符串。仅 `post` 和 `put` 支持。
 - `key` (Optional[str]): 用于认证的Bearer Token。如果提供，会自动添加到请求头的 `Authorization` 字段。
 - `should_fail` (bool): 如果设置为 `True`，则预期此请求会失败（返回非2xx状态码）。如果请求真的失败了，测试结果为成功 (✅)，反之则为失败 (❌)。默认为 `False`。
-- `extract` (Optional[str]): 一个字符串键，用于从JSON响应中提取对应的值。如果提取成功，`run_test` 函数会返回这个值。
+- `extract` (Optional[str]): 一个字符串键，用于从JSON响应中提取对应的值。如果提取成功，`run_test` 函数会返回这个值。支持使用点语法（例如 `user.address.city`）来提取深层嵌套的JSON对象中的值。
 - `headers` (Optional[Dict[str, str]]): 一个字典，包含了需要添加到请求中的自定义头部。
 
 

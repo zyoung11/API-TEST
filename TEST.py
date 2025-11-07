@@ -1,5 +1,5 @@
 # TEST.py
-from APITEST import get, post, put, delete, run_test
+from APITEST import get, post, put, delete, run_test, print_info
 
 # ---------- 1. 最基础的 GET：获取资源并提取字段 ----------
 uid = run_test(
@@ -47,3 +47,20 @@ run_test(
     "6. 预期 404 的 GET",
     get("https://jsonplaceholder.typicode.com/posts/999999", should_fail=True)
 )
+
+# ---------- 7. 点语法提取：提取 user 的 address.city ----------
+city = run_test(
+    "7. 提取用户的城市",
+    get("https://jsonplaceholder.typicode.com/users/1", extract="address.city")
+)
+
+# ---------- 8. 使用 print_info 打印信息 ----------
+print_info(
+    "用户信息",
+    {
+        "用户ID": uid,
+        "城市": city,
+        "新帖子ID": new_post
+    }
+)
+
