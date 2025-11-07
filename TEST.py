@@ -1,6 +1,6 @@
 from APITEST import get, post, put, delete, run_test, print_info
 
-# ---------- 1. 基础 GET + 单字段提取 ----------
+# ---------- 1. 基础 GET + 多字段提取 ----------
 uid, uname, city = run_test(
     "1. 获取 1 号用户",
     get("https://jsonplaceholder.typicode.com/users/1"),
