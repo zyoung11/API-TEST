@@ -1,4 +1,4 @@
-from APITEST import get, option, patch, post, put, delete, run_test, print_info
+from PAT import get, option, patch, post, put, delete, run_test, print_info
 
 # ---------- 1. 基础 GET + 多字段提取 ----------
 uid, uname, city = run_test(
