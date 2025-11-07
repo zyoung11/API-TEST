@@ -28,7 +28,12 @@ run_test(
     "4. 修改刚才的帖子",
     put(
         f"https://jsonplaceholder.typicode.com/posts/1",
-        body='{"id":%d,"title":"已更新","body":"新内容","userId":%d}' % (new_post, uid)
+        body=f'{
+            "id":{new_post},
+            "title":"已更新",
+            "body":"新内容",
+            "userId":{uid}
+        }'
     )
 )
 
