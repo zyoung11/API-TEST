@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import Optional, Any, Tuple, Dict
+from typing import Optional, Any, Tuple, Dict, Union
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
@@ -86,7 +86,7 @@ def run_test(
         values.append(v)
     return tuple(values)
 
-def post(url: str, body: Optional[str] = None, key: Optional[str] = None,
+def post(url: str, body: Optional[Union[str, Dict[str, Any], list]] = None, key: Optional[str] = None,
          should_fail: bool = False, extract: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Tuple[str, Any, int, Optional[str]]:
     request_headers = {"Content-Type": "application/json"}
     if headers:
@@ -94,8 +94,11 @@ def post(url: str, body: Optional[str] = None, key: Optional[str] = None,
     if key:
         request_headers["Authorization"] = f"Bearer {key}"
     kwargs = {"headers": request_headers, "timeout": 10}
-    if body:
-        kwargs["data"] = body
+    if body is not None:
+        if isinstance(body, (dict, list)):
+            kwargs["data"] = json.dumps(body, ensure_ascii=False)
+        else:
+            kwargs["data"] = body
     try:
         resp = requests.post(url, **kwargs)
         status_code = resp.status_code
@@ -142,15 +145,18 @@ def delete(url: str, key: Optional[str] = None, should_fail: bool = False, extra
         return ("❌" if not should_fail else "✅"), str(e), 999, extract
 
 
-def put(url: str, body: Optional[str] = None, key: Optional[str] = None, should_fail: bool = False, extract: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Tuple[str, Any, int, Optional[str]]:
+def put(url: str, body: Optional[Union[str, Dict[str, Any], list]] = None, key: Optional[str] = None, should_fail: bool = False, extract: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Tuple[str, Any, int, Optional[str]]:
     request_headers = {"Content-Type": "application/json"}
     if headers:
         request_headers.update(headers)
     if key:
         request_headers["Authorization"] = f"Bearer {key}"
     kwargs = {"headers": request_headers, "timeout": 10}
-    if body:
-        kwargs["data"] = body
+    if body is not None:
+        if isinstance(body, (dict, list)):
+            kwargs["data"] = json.dumps(body, ensure_ascii=False)
+        else:
+            kwargs["data"] = body
     try:
         resp = requests.put(url, **kwargs)
         status_code = resp.status_code
@@ -198,3 +204,82 @@ def get(url: str, key: Optional[str] = None, should_fail: bool = False, extract:
         return ("❌" if not should_fail else "✅"), str(e), 999, extract
 
 
+def patch(url: str,
+          body: Optional[Union[str, Dict[str, Any], list]] = None,
+          key: Optional[str] = None,
+          should_fail: bool = False,
+          extract: Optional[str] = None,
+          headers: Optional[Dict[str, str]] = None
+          ) -> Tuple[str, Any, int, Optional[str]]:
+    request_headers = {"Content-Type": "application/json"}
+    if headers:
+        request_headers.update(headers)
+    if key:
+        request_headers["Authorization"] = f"Bearer {key}"
+
+    kwargs = {"headers": request_headers, "timeout": 10}
+    if body is not None:
+        if isinstance(body, (dict, list)):
+            kwargs["data"] = json.dumps(body, ensure_ascii=False)
+        else:
+            kwargs["data"] = body
+    try:
+        resp = requests.patch(url, **kwargs)
+        status_code = resp.status_code
+
+        # 2xx 算成功
+        if 200 <= status_code < 300:
+            if should_fail:
+                return "❌", f"期望失败但成功: {status_code}", status_code, extract
+            try:
+                return "✅", resp.json(), status_code, extract
+            except ValueError:
+                return "✅", {"response": resp.text}, status_code, extract
+        else:
+            if should_fail:
+                return "✅", {"error": f"状态码异常: {status_code}"}, status_code, extract
+            return "❌", f"状态码异常: {status_code}", status_code, extract
+
+    except Exception as e:
+        return ("❌" if not should_fail else "✅"), str(e), 999, extract
+
+
+def option(url: str,
+           key: Optional[str] = None,
+           should_fail: bool = False,
+           extract: Optional[str] = None,
+           headers: Optional[Dict[str, str]] = None
+           ) -> Tuple[str, Any, int, Optional[str]]:
+    request_headers = {"Content-Type": "application/json"}
+    if headers:
+        request_headers.update(headers)
+    if key:
+        request_headers["Authorization"] = f"Bearer {key}"
+
+    try:
+        resp = requests.options(url, headers=request_headers, timeout=10)
+        status_code = resp.status_code
+
+        # 2xx 算成功
+        if 200 <= status_code < 300:
+            if should_fail:
+                return "❌", f"期望失败但成功: {status_code}", status_code, extract
+            try:
+                # OPTIONS 多数返回空 body，若服务端返回 JSON 也能解析
+                json_data = resp.json()
+            except ValueError:
+                # 无 body 时把响应头里常用 CORS 信息带回来即可
+                json_data = {
+                    "allow": resp.headers.get("Allow"),
+                    "access_control_allow_methods": resp.headers.get("Access-Control-Allow-Methods"),
+                    "access_control_allow_headers": resp.headers.get("Access-Control-Allow-Headers"),
+                    "access_control_max_age": resp.headers.get("Access-Control-Max-Age"),
+                }
+            return "✅", json_data, status_code, extract
+        else:
+            if should_fail:
+                return "✅", {"error": f"状态码异常: {status_code}"}, status_code, extract
+            return "❌", f"状态码异常: {status_code}", status_code, extract
+
+    except Exception as e:
+        return ("❌" if not should_fail else "✅"), str(e), 999, extract
