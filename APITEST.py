@@ -47,40 +47,44 @@ def _deep_get(obj: Any, path: str) -> Any:
             break
     return cur
 
-def run_test(description: str, response: Tuple[str, Any, int, Optional[str]]) -> Any:
+def run_test(
+    description: str,
+    response: Tuple[str, Any, int, Optional[str]],
+    *extract_paths: str
+) -> Any:
     console = Console()
-    status, content, status_code, extract = response
+    status, content, status_code, _ = response
     color = _get_status_color(status_code)
 
     title = f"""{description}: {status} [bold {color}]HTTP {status_code}[/bold {color}]"""
 
     display_content = content
-    if extract is None and isinstance(content, dict) and 'buckets' in content:
+    if not extract_paths and isinstance(content, dict) and 'buckets' in content:
         display_content = content['buckets']
 
-    if isinstance(display_content, dict) or isinstance(display_content, list):
+    if isinstance(display_content, (dict, list)):
         json_str = json.dumps(display_content, indent=4, ensure_ascii=False)
         body = Syntax(json_str, "json", theme="dracula", line_numbers=True, background_color="default")
     else:
         body = str(display_content)
 
-    console.print(
-        Panel(
-            body,
-            title=title,
-            border_style="blue",
-            expand=True,
-        )
-    )
+    console.print(Panel(body, title=title, border_style="blue", expand=True))
     console.print()
 
-    if extract:
-        value = _deep_get(content, extract)
-        if value is not None:
-            return value
-        console.print(f"[bold red]Warning:[/bold red] Could not extract '{extract}' from response.")
-    return None
-
+    if not extract_paths:
+        return None
+    if len(extract_paths) == 1:
+        value = _deep_get(content, extract_paths[0])
+        if value is None:
+            console.print(f"[bold red]Warning:[/bold red] Could not extract '{extract_paths[0]}' from response.")
+        return value
+    values = []
+    for path in extract_paths:
+        v = _deep_get(content, path)
+        if v is None:
+            console.print(f"[bold red]Warning:[/bold red] Could not extract '{path}' from response.")
+        values.append(v)
+    return tuple(values)
 
 def post(url: str, body: Optional[str] = None, key: Optional[str] = None,
          should_fail: bool = False, extract: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Tuple[str, Any, int, Optional[str]]:
