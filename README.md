@@ -34,149 +34,166 @@ uv sync
 
 ## 基本用法
 
-### 1. 创建测试文件
-
-创建一个新的 Python 文件（例如 `my_test.py`），导入必要的模块：
+### 1. 基础 GET + 多字段提取
 
 ```python
-from PAT import get, post, put, patch, delete, option, run_test, print_info
-```
-
-### 2. 基础 GET 请求与数据提取
-
-```python
-# 发送 GET 请求并提取多个字段
-user_id, user_name, city = run_test(
-    "获取用户信息",
+# ---------- 1. 基础 GET + 多字段提取 ----------
+uid, uname, city = run_test(
+    "1. 获取 1 号用户",
     get("https://jsonplaceholder.typicode.com/users/1"),
-    "id", "name", "address.city"
+    "id",
+    "name",
+    "address.city"
 )
 ```
 
-### 3. 使用提取的数据进行链式调用
+### 2. 字符串插值 URL
 
 ```python
-# 使用之前提取的 user_id 构建 URL
+# ---------- 2. 字符串插值 URL ----------
 run_test(
-    "查询用户帖子列表",
-    get(f"https://jsonplaceholder.typicode.com/users/{user_id}/posts")
+    "2. 用 uid 查询该用户帖子列表",
+    get(f"https://jsonplaceholder.typicode.com/users/{uid}/posts")
 )
 ```
 
-### 4. POST 请求创建资源
+### 3. 获取单个列表元素字段
 
 ```python
-# 创建新资源并提取返回的 ID
-new_post_id = run_test(
-    "创建新帖子",
+# ---------- 3. 获取单个列表元素字段 ----------
+body, title = run_test(
+    "3. 用 uid 查询该用户帖子列表",
+    get(f"https://jsonplaceholder.typicode.com/users/{uid}/posts"),
+    "0.body",
+    "0.title"
+)
+```
+
+### 4. POST 创建资源 + 提取值
+
+```python
+# ---------- 4. POST 创建资源 + 提取值 ----------
+new_post = run_test(
+    "4. 新建帖子",
     post(
         "https://jsonplaceholder.typicode.com/posts",
         body={
-            "title": "测试帖子",
-            "body": "这是通过 PAT 创建的帖子",
-            "userId": user_id
+            "title":"帖子",
+            "body":"由脚本创建",
+            "userId":uid
         }
     ),
-    "id"  # 提取响应中的 id 字段
+    "id"
 )
 ```
 
-### 5. PUT 和 PATCH 请求更新资源
+### 5. PUT 修改
 
 ```python
-# 使用 PUT 完全更新资源
+# ---------------- 5. PUT 修改----------------
 run_test(
-    "更新帖子内容",
+    "5. 修改刚才的帖子",
     put(
         "https://jsonplaceholder.typicode.com/posts/1",
         body={
-            "id": new_post_id,
-            "title": "更新后的标题",
-            "body": "更新后的内容",
-            "userId": user_id
+            "id":new_post,
+            "title":"已更新",
+            "body":"新内容",
+            "userId":uid
         }
     )
 )
+```
 
-# 使用 PATCH 部分更新资源
+### 6. PATCH 修改
+
+```python
+# ---------------- 6. PATCH 修改----------------
 run_test(
-    "部分更新帖子",
+    "6. 修改刚才的帖子",
     patch(
         "https://jsonplaceholder.typicode.com/posts/1",
         body={
-            "title": "仅更新标题"
+            "id":new_post,
+            "title":"已更新",
+            "body":"新内容",
+            "userId":uid
         }
     )
 )
 ```
 
-### 6. DELETE 请求删除资源
+### 7. 自定义头
 
 ```python
-# 删除资源
+# ---------------- 7. 自定义头 ----------------
 run_test(
-    "删除帖子",
-    delete(f"https://jsonplaceholder.typicode.com/posts/{new_post_id}")
-)
-```
-
-### 7. OPTIONS 请求
-
-```python
-# 查询资源支持的 HTTP 方法
-run_test(
-    "查询帖子支持的选项",
-    option("https://jsonplaceholder.typicode.com/posts/1")
-)
-```
-
-### 8. 自定义请求头
-
-```python
-# 添加自定义请求头
-run_test(
-    "带认证头的请求",
+    "7. 带自定义头查询帖子详情",
     get(
-        "https://api.example.com/protected",
-        headers={"Authorization": "Bearer your-token", "X-Custom-Header": "value"}
+        "https://jsonplaceholder.typicode.com/posts/1",
+        headers={"X-Source": "APITEST-demo"}
     )
 )
 ```
 
-### 9. 预期失败测试
+### 8. OPTION
 
 ```python
-# 测试预期会失败的请求（如删除不存在的资源）
+# ---------------- 8. OPTION ----------------
 run_test(
-    "验证资源不存在",
-    get(f"https://jsonplaceholder.typicode.com/posts/{new_post_id}", should_fail=True)
+    "8. 带自定义头查询帖子详情",
+    option(
+        "https://jsonplaceholder.typicode.com/posts/1"
+    )
 )
 ```
 
-### 10. 深路径数据提取
+### 9. DELETE 删除
 
 ```python
-# 提取嵌套的 JSON 数据
-latitude, longitude = run_test(
-    "提取用户地理坐标",
+# ---------- 9. DELETE 删除 ----------
+run_test(
+    "9. 删除帖子",
+    delete(f"https://jsonplaceholder.typicode.com/posts/{new_post}")
+)
+```
+
+### 10. 预期 404：资源不存在
+
+```python
+# ---------- 10. 预期 404：资源不存在 ----------
+run_test(
+    "10. 再次查询应返回 404（预期失败）",
+    get(f"https://jsonplaceholder.typicode.com/posts/{new_post}", should_fail=True)
+)
+```
+
+### 11. 深路径 + 多字段同时提取
+
+```python
+# ---------- 11. 深路径 + 多字段同时提取 ----------
+lat, lng = run_test(
+    "11. 提取用户地址坐标",
     get("https://jsonplaceholder.typicode.com/users/1"),
     "address.geo.lat", "address.geo.lng"
 )
 ```
 
-### 11. 输出测试信息
+### 12. 输出自定义键值对信息
 
 ```python
-# 在测试结束时输出汇总信息
+# ---------- 12. 输出自定义键值对信息 ----------
 print_info(
-    "测试结果汇总",
+    "输出键值对信息",
     {
-        "用户ID": user_id,
-        "用户名": user_name,
+        "用户 ID": uid,
+        "用户姓名": uname,
         "所在城市": city,
-        "创建的帖子ID": new_post_id,
-        "纬度": latitude,
-        "经度": longitude
+        "帖子 ID": new_post,
+        "用户的文章标题": title,
+        "用户的文章内容": body,
+        "纬度": lat,
+        "经度": lng
     }
 )
 ```
@@ -218,6 +235,7 @@ print_info(title, info_dict)
 - •`"id"` - 提取顶层的 id 字段
 - •`"address.city"` - 提取 address 对象中的 city 字段
 - •`"address.geo.lat"` - 提取嵌套的经纬度信息
+- `"0.address.geo.lat"` - 提取单个列表元素的嵌套的经纬度信息
 
 ## 错误处理
 
